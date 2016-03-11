@@ -17,3 +17,25 @@ Accessible via frame buffer driver /dev/fb1 where each pixel is 16 bit (RGB 5 6 
 **WARNING**
 
 This code is not production ready.
+
+## Example
+
+This code will only run on a Raspberry Pi with a Sense Hat attached (!)
+
+### Build
+
+make all, and the c driver and the erlang code will be compiled.
+
+Then, start erlang:
+
+```
+erl
+```
+
+Start the port driver, this will find the framebuffer device and map the device into memory. Logo will write a pixelated Erlang logo to the device and stop will close the connection with the Sense Hat.
+
+```
+sensehat:start().
+sensehat:logo().
+sensehat:stop().
+```
