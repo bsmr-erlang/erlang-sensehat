@@ -26,7 +26,7 @@ This code will only run on a Raspberry Pi with a Sense Hat attached (!)
 
 make all, and the c driver and the erlang code will be compiled.
 
-Then, start erlang:
+Then, run erlang:
 
 ```
 erl
