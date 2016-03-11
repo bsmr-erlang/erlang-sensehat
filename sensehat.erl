@@ -2,8 +2,8 @@
 %%% morten.tenum@gmail.com
 
 -module(sensehat).
--export([start/0, stop/0]).
--export([set_pixel/5, set_pixel/3]).
+-export([start/0, stop/0, init/0]).
+-export([set_pixel/5, set_pixel/3, clear/0, fill/3]).
 
 
 start() ->
@@ -24,8 +24,15 @@ init() ->
 set_pixel(X, Y, RGB) ->
 	set_pixel(X, Y, RGB bsr 16, (RGB bsr 8) band 16#ff, RGB band 16#ff).
 
-set_pixel(X, Y, R, G, B) ->
-	call_port({set_pixel, X, Y, R, G, B}).
+set_pixel(X, Y, R, G, B) -> call_port({set_pixel, X, Y, R, G, B}).
+
+fill(R, G, B) -> call_port({fill, R, G, B}).
+
+clear() -> fill(0, 0, 0).
+
+%%
+%%	internal communication with the port
+%%
 
 call_port(Msg) ->
 	sensehat ! {call, self(), Msg},
@@ -58,6 +65,7 @@ loop(Port) ->
 			exit(port_terminated)
 	end.
 
-encode({set_pixel, X, Y, R, G, B}) -> [1, X, Y, R, G, B].
+encode({set_pixel, X, Y, R, G, B}) -> [1, X, Y, R, G, B];
+encode({fill, R, G, B}) -> [2, R, G, B].
 
 decode([Int]) -> Int.

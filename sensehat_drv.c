@@ -151,6 +151,11 @@ static int sensehat_drv_set_pixel(sensehat_data* d, int x, int y, int r, int g, 
     return 0;
 }
 
+static int sensehat_drv_fill(sensehat_data* d, int r, int g, int b) {
+    memset(d->fb, rgb_to_bits16(r, g, b), 128);
+    return 0;
+}
+
 static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT bufflen)
 {
     sensehat_data* d = (sensehat_data*)handle;
@@ -167,6 +172,13 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
         buff[3], // r
         buff[4], // g
         buff[5]); // b
+    }
+    else if (fn == 2) {
+        res = sensehat_drv_fill(
+            d,
+            buff[1],
+            buff[2],
+            buff[3]);
     }
 
     driver_output(d->port, &res, 1);
