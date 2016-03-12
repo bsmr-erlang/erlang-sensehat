@@ -23,6 +23,9 @@ start() ->
 	% Returns the process identifier of a new process started.
 	spawn(?MODULE, init, []).
 
+create_framebuffer(Default) ->
+	array:new([{size,64}, {default,Default}, {fixed,true}]).
+
 init() ->
 	% register this process with the atom sensehat
 	% self() will be the port owner
@@ -33,14 +36,11 @@ init() ->
 	% open and start the driver (ErlDrvEntry.start)
 	Port = open_port({spawn_driver, sensehat_drv}, [binary, use_stdio]),
 
-	% framebuffer
-	Framebuffer = array:new(64, {default,0}),
-
 	% dump some info about the port
 	% io:format("erlang:port_info: ~p ~n", [erlang:port_info(Port)]),
 	
 	% start waiting for messages from the port
-	loop(Port, Framebuffer).
+	loop(Port, create_framebuffer(0)).
 
 call_port(Msg) ->
 	sensehat ! {call, Msg},
@@ -70,10 +70,10 @@ loop(Port, Framebuffer) ->
 			loop(Port, array:set(coordinate_to_index(X, Y), RGB, Framebuffer));
 
 		{fill, RGB} ->
-			loop(Port, array:new(64, {default,RGB}));
+			loop(Port, create_framebuffer(RGB));
 
 		{fill_fb, Data} ->
-			loop(Port, array:from_list(Data));
+			loop(Port, array:fix(array:from_list(Data)));
 
 		{call, Msg} ->
 			% Sends Data to the port.
@@ -125,7 +125,7 @@ set_gamma(Value) ->
 set_gamma_low_light() ->
 	set_gamma(<<0,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,3,3,3,4,4,5,5,6,6,7,7,8,8,9,10,10>>).
 
-set_pixel(X, Y, RGB) ->
+set_pixel(X, Y, RGB) when X >= 0, X =< 7, Y >= 0, Y =< 7 ->
 	sensehat ! {set_pixel, X, Y, RGB},
 	ok.
 
@@ -133,7 +133,7 @@ fill(RGB) ->
 	sensehat ! {fill, RGB},
 	ok.
 
-fill_fb(Data) ->
+fill_fb(Data) when length(Data) =:= 64 ->
 	sensehat ! {fill_fb, Data},
 	ok.
 
