@@ -4,7 +4,7 @@
 -author("Morten Teinum <morten.teinum@gmail.com>").
 
 -export([start/0, stop/0, init/0]).
--export([set_pixel/3, clear/0, fill/1, logo/0, fill_fb/1, get_gamma/0, set_gamma/1]).
+-export([set_pixel/3, clear/0, fill/1, logo/0, fill_fb/1, get_gamma/0, set_gamma/1, set_gamma_low_light/0]).
 
 
 start() ->
@@ -93,6 +93,9 @@ get_gamma() ->
 
 set_gamma(Value) ->
 	call_port({set_gamma, Value}).
+
+set_gamma_low_light() ->
+	set_gamma(<<0,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,3,3,3,4,4,5,5,6,6,7,7,8,8,9,10,10>>).
 
 set_pixel(X, Y, RGB) ->
 	call_port({set_pixel, X, Y, RGB}).
