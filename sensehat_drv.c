@@ -5,7 +5,7 @@
 #define DEV_FB "/dev"
 #define FB_DEV_NAME "fb"
 
-// #define SENSEHAT_DEBUG
+#define SENSEHAT_DEBUG
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,6 +24,11 @@
 
 // https://github.com/erlang/otp/blob/7cb403e4aa044fd2cc7702dbe8e2d0eea68e81f3/erts/emulator/beam/erl_driver.h
 #include "erl_driver.h"
+
+
+#define SENSE_HAT_FB_FBIOGET_GAMMA 61696
+#define SENSE_HAT_FB_FBIOSET_GAMMA 61697
+#define SENSE_HAT_FB_FBIORESET_GAMMA 61698
 
 // framebuffer
 struct fb_t {
@@ -183,13 +188,28 @@ static int sensehat_drv_fill_fb(sensehat_data* d, int len, char* buff) {
     return 0;
 }
 
+static void sensehat_drv_get_gamma(sensehat_data* d) {
+    char gamma[32];
+    memset(&gamma, 0, sizeof(gamma));
+
+    ioctl(d->fbfd, SENSE_HAT_FB_FBIOGET_GAMMA, &gamma);
+
+    driver_output(d->port, gamma, sizeof(gamma));
+
+}
+
+static void sensehat_drv_set_gamma(sensehat_data* d, char* buff) {
+    ioctl(d->fbfd, SENSE_HAT_FB_FBIOSET_GAMMA, buff);    
+}
+
 static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT bufflen)
 {
     sensehat_data* d = (sensehat_data*)handle;
     char fn = buff[0];
-    int i;
 
 #ifdef SENSEHAT_DEBUG
+    int i;
+
     printf("sensehat_drv: output bufflen=%i\r\n", bufflen);
     
     for (i=0; i < bufflen; i++) {
@@ -200,7 +220,7 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
 #endif
 
     
-    if (fn == 1) {
+    if (fn == 1 && bufflen == 6) {
       sensehat_drv_set_pixel(
         d,
         buff[1], // x
@@ -209,18 +229,25 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
         buff[4], // g
         buff[5]); // b
     }
-    else if (fn == 2) {
+    else if (fn == 2 && bufflen == 4) {
         sensehat_drv_fill(
             d,
             buff[1],
             buff[2],
             buff[3]);
     }
-    else if (fn == 3) {
+    else if (fn == 3 && bufflen > 1) {
         sensehat_drv_fill_fb(
             d,
             bufflen - 1, // size of rgb pairs
             buff + 1);
+    }
+    else if (fn == 4) {
+        sensehat_drv_get_gamma(d);
+    }
+    else if (fn == 5 && bufflen == 33) {
+        // assert bufflen == 33
+        sensehat_drv_set_gamma(d, buff + 1);
     }
 }
 

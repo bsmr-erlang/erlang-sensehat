@@ -3,7 +3,7 @@
 
 -module(sensehat).
 -export([start/0, stop/0, init/0]).
--export([set_pixel/5, set_pixel/3, clear/0, fill/3, logo/0, fill_fb/1]).
+-export([set_pixel/5, set_pixel/3, clear/0, fill/3, logo/0, fill_fb/1, get_gamma/0, set_gamma/1]).
 
 
 start() ->
@@ -32,8 +32,15 @@ init() ->
 	loop(Port).
 
 call_port(Msg) ->
-	sensehat ! {call, self(), Msg},
+	sensehat ! {call, Msg},
 	ok.
+
+get_port(Msg) ->
+  	sensehat ! {get, self(), Msg},
+ 	receive
+ 		{sensehat, Result} ->
+ 			Result
+ 	end.	
 
 stop() ->
 	sensehat ! stop.
@@ -41,12 +48,21 @@ stop() ->
 loop(Port) ->
 	% wait for work to do
 	receive
-		{call, Caller, Msg} ->
+		{call, Msg} ->
 			% Sends Data to the port.
 			% alternative: port_command(Port, Msg)
 			Port ! {self(), {command, encode(Msg)}},
 			% our call is fire and forget, wait for next message
 			loop(Port);
+
+		{get, Caller, Msg} ->
+			Port ! {self(), {command, encode(Msg)}},
+			receive
+  				{Port, {data, Data}} ->
+ 					Caller ! {sensehat, Data}
+  			end,
+  			loop(Port);
+
 		% tell the port to close
 		stop ->
 			Port ! {self(), close},
@@ -62,12 +78,20 @@ loop(Port) ->
 	end.
 
 encode({set_pixel, X, Y, R, G, B}) -> [1, X, Y, R, G, B];
-encode({fill, R, G, B}) -> [2, R, G, B];
-encode({fill_fb, Data}) -> [3, list_to_binary([<<X:24>> || X <- Data])].
+encode({fill, R, G, B})            -> [2, R, G, B];
+encode({fill_fb, Data})            -> [3, list_to_binary([<<X:24>> || X <- Data])];
+encode({get_gamma})                -> [4];
+encode({set_gamma, Value})         -> [5, Value].
 
 %%%
 %%% API and test
 %%%
+
+get_gamma() ->
+	get_port({get_gamma}).
+
+set_gamma(Value) ->
+	call_port({set_gamma, Value}).
 
 set_pixel(X, Y, RGB) ->
 	set_pixel(X, Y, RGB bsr 16, (RGB bsr 8) band 16#ff, RGB band 16#ff).
