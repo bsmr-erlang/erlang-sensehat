@@ -1,7 +1,8 @@
 %%% Raspberry PI Sense Hat Port integration
-%%% morten.tenum@gmail.com
 
 -module(sensehat).
+-author("Morten Teinum <morten.teinum@gmail.com>").
+
 -export([start/0, stop/0, init/0]).
 -export([set_pixel/5, set_pixel/3, clear/0, fill/3, logo/0, fill_fb/1, get_gamma/0, set_gamma/1]).
 
