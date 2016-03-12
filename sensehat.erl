@@ -4,8 +4,15 @@
 -author("Morten Teinum <morten.teinum@gmail.com>").
 
 -export([start/0, stop/0, init/0]).
--export([set_pixel/3, clear/0, fill/1, logo/0, fill_fb/1, get_gamma/0, set_gamma/1, set_gamma_low_light/0]).
-
+-export([set_pixel/3,
+	     clear/0,
+	     fill/1,
+	     logo/0, 
+	     fill_fb/1,
+	     get_gamma/0,
+	     set_gamma/1,
+	     set_gamma_low_light/0,
+	     reset_gamma/1]).
 
 start() ->
 	case erl_ddll:load_driver(".", sensehat_drv) of
@@ -97,12 +104,17 @@ loop(Port, Framebuffer) ->
 			exit(port_terminated)
 	end.
 
-encode({get_gamma})            -> [2];
-encode({set_gamma, Value})     -> [3, Value].
+encode({get_gamma})                  -> [2];
+encode({set_gamma, Value})           -> [3, Value];
+encode({reset_gamma, gamma_default}) -> [4, 0];
+encode({reset_gamma, gamma_low})     -> [4, 1].
 
 %%%
 %%% API
 %%%
+
+reset_gamma(Type) ->
+	call_port({reset_gamma, Type}).
 
 get_gamma() ->
 	get_port({get_gamma}).

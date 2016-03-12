@@ -33,6 +33,7 @@
 #define SENSE_HAT_OP_FILL_FB 1
 #define SENSE_HAT_OP_GET_GAMMA 2
 #define SENSE_HAT_OP_SET_GAMMA 3
+#define SENSE_HAT_OP_RESET_GAMMA 4
 
 // framebuffer
 struct fb_t {
@@ -196,6 +197,10 @@ static void sensehat_drv_set_gamma(sensehat_data* d, char* buff) {
     ioctl(d->fbfd, SENSE_HAT_FB_FBIOSET_GAMMA, buff);    
 }
 
+static void sensehat_drv_reset_gamma(sensehat_data* d, char buff) {
+    ioctl(d->fbfd, SENSE_HAT_FB_FBIORESET_GAMMA, buff);
+}
+
 static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT bufflen)
 {
     sensehat_data* d = (sensehat_data*)handle;
@@ -225,6 +230,12 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
     else if (fn == SENSE_HAT_OP_SET_GAMMA && bufflen == 33) {
         // assert bufflen == 33
         sensehat_drv_set_gamma(d, buff + 1);
+    }
+    else if (fn == SENSE_HAT_OP_RESET_GAMMA && bufflen == 2) {
+        sensehat_drv_reset_gamma(d, buff[1]);
+    }
+    else {
+        printf("sensehat_drv: error fn=%i, bufflen=%i\r\n", fn, bufflen);
     }
 }
 
