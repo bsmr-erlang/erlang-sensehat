@@ -4,7 +4,7 @@
 -author("Morten Teinum <morten.teinum@gmail.com>").
 
 -export([start/0, stop/0, init/0]).
--export([set_pixel/5, set_pixel/3, clear/0, fill/3, logo/0, fill_fb/1, get_gamma/0, set_gamma/1]).
+-export([set_pixel/3, clear/0, fill/1, logo/0, fill_fb/1, get_gamma/0, set_gamma/1]).
 
 
 start() ->
@@ -78,14 +78,14 @@ loop(Port) ->
 			exit(port_terminated)
 	end.
 
-encode({set_pixel, X, Y, R, G, B}) -> [1, X, Y, R, G, B];
-encode({fill, R, G, B})            -> [2, R, G, B];
-encode({fill_fb, Data})            -> [3, list_to_binary([<<X:24>> || X <- Data])];
-encode({get_gamma})                -> [4];
-encode({set_gamma, Value})         -> [5, Value].
+encode({set_pixel, X, Y, RGB}) -> [1, X, Y, <<RGB:24>>];
+encode({fill, RGB})            -> [2, <<RGB:24>>];
+encode({fill_fb, Data})        -> [3, list_to_binary([<<X:24>> || X <- Data])];
+encode({get_gamma})            -> [4];
+encode({set_gamma, Value})     -> [5, Value].
 
 %%%
-%%% API and test
+%%% API
 %%%
 
 get_gamma() ->
@@ -95,13 +95,13 @@ set_gamma(Value) ->
 	call_port({set_gamma, Value}).
 
 set_pixel(X, Y, RGB) ->
-	set_pixel(X, Y, RGB bsr 16, (RGB bsr 8) band 16#ff, RGB band 16#ff).
+	call_port({set_pixel, X, Y, RGB}).
 
-set_pixel(X, Y, R, G, B) -> call_port({set_pixel, X, Y, R, G, B}).
+fill(RGB) ->
+	call_port({fill, RGB}).
 
-fill(R, G, B) -> call_port({fill, R, G, B}).
-
-clear() -> fill(0, 0, 0).
+clear() ->
+	fill(16#000000).
 
 logo() -> fill_fb(
 	[16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff,
@@ -114,5 +114,4 @@ logo() -> fill_fb(
      16#f8e6ea, 16#ffffff, 16#ffffff, 16#ffffff, 16#fffdff, 16#ffffff, 16#fefbfc, 16#f0c9d4]).
 
 fill_fb(Data) ->
-	call_port({fill_fb, Data})
-.
+	call_port({fill_fb, Data}).

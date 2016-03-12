@@ -30,6 +30,12 @@
 #define SENSE_HAT_FB_FBIOSET_GAMMA 61697
 #define SENSE_HAT_FB_FBIORESET_GAMMA 61698
 
+#define SENSE_HAT_OP_SET_PIXEL 1
+#define SENSE_HAT_OP_FILL 2
+#define SENSE_HAT_OP_FILL_FB 3
+#define SENSE_HAT_OP_GET_GAMMA 4
+#define SENSE_HAT_OP_SET_GAMMA 5
+
 // framebuffer
 struct fb_t {
     uint16_t pixel[8][8];
@@ -220,7 +226,7 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
 #endif
 
     
-    if (fn == 1 && bufflen == 6) {
+    if (fn == SENSE_HAT_OP_SET_PIXEL && bufflen == 6) {
       sensehat_drv_set_pixel(
         d,
         buff[1], // x
@@ -229,23 +235,23 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
         buff[4], // g
         buff[5]); // b
     }
-    else if (fn == 2 && bufflen == 4) {
+    else if (fn == SENSE_HAT_OP_FILL && bufflen == 4) {
         sensehat_drv_fill(
             d,
             buff[1],
             buff[2],
             buff[3]);
     }
-    else if (fn == 3 && bufflen > 1) {
+    else if (fn == SENSE_HAT_OP_FILL_FB && bufflen > 1) {
         sensehat_drv_fill_fb(
             d,
             bufflen - 1, // size of rgb pairs
             buff + 1);
     }
-    else if (fn == 4) {
+    else if (fn == SENSE_HAT_OP_GET_GAMMA) {
         sensehat_drv_get_gamma(d);
     }
-    else if (fn == 5 && bufflen == 33) {
+    else if (fn == SENSE_HAT_OP_SET_GAMMA && bufflen == 33) {
         // assert bufflen == 33
         sensehat_drv_set_gamma(d, buff + 1);
     }
