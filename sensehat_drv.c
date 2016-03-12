@@ -5,6 +5,8 @@
 #define DEV_FB "/dev"
 #define FB_DEV_NAME "fb"
 
+#define SENSEHAT_DEBUG 0
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -20,6 +22,7 @@
 #include <linux/input.h>
 #include <linux/fb.h>
 
+// https://github.com/erlang/otp/blob/7cb403e4aa044fd2cc7702dbe8e2d0eea68e81f3/erts/emulator/beam/erl_driver.h
 #include "erl_driver.h"
 
 // framebuffer
@@ -85,6 +88,7 @@ static int open_fbdev()
 static ErlDrvData sensehat_drv_start(ErlDrvPort port, char *buff)
 {
 //    printf ("sensehat_drv: start buff=%s\n", buff);
+    set_port_control_flags(port, PORT_CONTROL_FLAG_BINARY); 
 
     sensehat_data* d = (sensehat_data*)driver_alloc(sizeof(sensehat_data));
     d->port = port;
@@ -115,7 +119,9 @@ static void sensehat_drv_stop(ErlDrvData handle)
 {
     sensehat_data* d = (sensehat_data*)handle;
 
-//    printf("sensehat_drv: stop\n");
+#ifdef SENSEHAT_DEBUG
+    printf("sensehat_drv: stop\r\n");
+#endif
 
     if (d->fb){
         memset(d->fb, 0, 128);
@@ -137,17 +143,8 @@ static uint16_t rgb_to_bits16(int r, int g, int b) {
     return (r << 11) + (g << 5) + b;
 }
 
-static int in_range(int n) {
-    return n >= 0 && n <= 7;
-}
-
 static int sensehat_drv_set_pixel(sensehat_data* d, int x, int y, int r, int g, int b){
-    if (!in_range(x) || !in_range(y)) {
-        return 1;
-    }
-
     d->fb->pixel[x][y] = rgb_to_bits16(r, g, b);
-
     return 0;
 }
 
@@ -156,13 +153,53 @@ static int sensehat_drv_fill(sensehat_data* d, int r, int g, int b) {
     return 0;
 }
 
+static int sensehat_drv_fill_fb(sensehat_data* d, int len, char* buff) {
+
+    // assert: len % 3 == 0
+
+    uint16_t rgb;
+    int i, x, y, r, g, b;
+    int pairs = len / 3;
+
+    // assert: pairs >= 0 && pairs <= 8*8
+#ifdef SENSEHAT_DEBUG
+    printf("drv: fill_fb len=%i pairs=%i rem=%i\r\n", len, pairs, len % 3);
+#endif
+
+    for (i=0; i < pairs; i++, buff += 3) {
+        x = i / 8;
+        y = i % 8;
+
+#ifdef SENSEHAT_DEBUG
+        printf("x=%i y=%i r=%02x, g=%02x b=%02x\r\n", x, y, buff[0], buff[1], buff[2]);
+#endif
+
+        d->fb->pixel[x][y] = rgb_to_bits16(
+            buff[0],
+            buff[1],
+            buff[2]);
+    }
+
+    return 0;
+}
+
 static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT bufflen)
 {
     sensehat_data* d = (sensehat_data*)handle;
+    char fn = buff[0];
+    int res = 0;
+    int i;
 
-//    printf("sensehat_drv: output %i\n", bufflen);
+#ifdef SENSEHAT_DEBUG
+    printf("sensehat_drv: output bufflen=%i\r\n", bufflen);
+    
+    for (i=0; i < bufflen; i++) {
+        printf("%02x ", buff[i]);
+    }
 
-    char fn = buff[0], res;
+    printf("\r\n");
+#endif
+
     
     if (fn == 1) {
       res = sensehat_drv_set_pixel(
@@ -180,8 +217,14 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
             buff[2],
             buff[3]);
     }
+    else if (fn == 3) {
+        res = sensehat_drv_fill_fb(
+            d,
+            bufflen - 1, // size of rgb pairs
+            buff + 1);
+    }
 
-    driver_output(d->port, &res, 1);
+    driver_output(d->port, (char *)&res, sizeof(res));
 }
 
 ErlDrvEntry sensehat_driver_entry = {
