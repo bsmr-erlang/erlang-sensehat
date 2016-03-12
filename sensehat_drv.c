@@ -5,7 +5,7 @@
 #define DEV_FB "/dev"
 #define FB_DEV_NAME "fb"
 
-#define SENSEHAT_DEBUG 0
+// #define SENSEHAT_DEBUG
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -187,7 +187,6 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
 {
     sensehat_data* d = (sensehat_data*)handle;
     char fn = buff[0];
-    int res = 0;
     int i;
 
 #ifdef SENSEHAT_DEBUG
@@ -202,7 +201,7 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
 
     
     if (fn == 1) {
-      res = sensehat_drv_set_pixel(
+      sensehat_drv_set_pixel(
         d,
         buff[1], // x
         buff[2], // y
@@ -211,20 +210,18 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
         buff[5]); // b
     }
     else if (fn == 2) {
-        res = sensehat_drv_fill(
+        sensehat_drv_fill(
             d,
             buff[1],
             buff[2],
             buff[3]);
     }
     else if (fn == 3) {
-        res = sensehat_drv_fill_fb(
+        sensehat_drv_fill_fb(
             d,
             bufflen - 1, // size of rgb pairs
             buff + 1);
     }
-
-    driver_output(d->port, (char *)&res, sizeof(res));
 }
 
 ErlDrvEntry sensehat_driver_entry = {

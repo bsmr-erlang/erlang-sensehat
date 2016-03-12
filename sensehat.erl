@@ -33,10 +33,7 @@ init() ->
 
 call_port(Msg) ->
 	sensehat ! {call, self(), Msg},
-	receive
-		{sensehat, Result} ->
-			Result
-	end.
+	ok.
 
 stop() ->
 	sensehat ! stop.
@@ -48,11 +45,7 @@ loop(Port) ->
 			% Sends Data to the port.
 			% alternative: port_command(Port, Msg)
 			Port ! {self(), {command, encode(Msg)}},
-			% wait for the port response.
-			receive
-				{Port, {data, Data}} ->
-					Caller ! {sensehat, Data}
-			end,
+			% our call is fire and forget, wait for next message
 			loop(Port);
 		% tell the port to close
 		stop ->
