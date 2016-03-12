@@ -26,11 +26,14 @@ init() ->
 	% open and start the driver (ErlDrvEntry.start)
 	Port = open_port({spawn_driver, sensehat_drv}, [binary, use_stdio]),
 
+	% framebuffer
+	Framebuffer = array:new(64, {default,0}),
+
 	% dump some info about the port
 	% io:format("erlang:port_info: ~p ~n", [erlang:port_info(Port)]),
 	
 	% start waiting for messages from the port
-	loop(Port).
+	loop(Port, Framebuffer).
 
 call_port(Msg) ->
 	sensehat ! {call, Msg},
@@ -46,15 +49,31 @@ get_port(Msg) ->
 stop() ->
 	sensehat ! stop.
 
-loop(Port) ->
+coordinate_to_index(X,  Y) -> X * 8 + Y.
+
+loop(Port, Framebuffer) ->
+	% create a binary representation of the framebuffer that we will send to the port
+	BinaryFramebuffer = list_to_binary([<<X:24>> || X <- array:to_list(Framebuffer)]),
+
+	Port ! { self(), {command, [1, BinaryFramebuffer]}},
+
 	% wait for work to do
 	receive
+		{set_pixel, X, Y, RGB} ->
+			loop(Port, array:set(coordinate_to_index(X, Y), RGB, Framebuffer));
+
+		{fill, RGB} ->
+			loop(Port, array:new(64, {default,RGB}));
+
+		{fill_fb, Data} ->
+			loop(Port, array:from_list(Data));
+
 		{call, Msg} ->
 			% Sends Data to the port.
 			% alternative: port_command(Port, Msg)
 			Port ! {self(), {command, encode(Msg)}},
 			% our call is fire and forget, wait for next message
-			loop(Port);
+			loop(Port, Framebuffer);
 
 		{get, Caller, Msg} ->
 			Port ! {self(), {command, encode(Msg)}},
@@ -62,7 +81,7 @@ loop(Port) ->
   				{Port, {data, Data}} ->
  					Caller ! {sensehat, Data}
   			end,
-  			loop(Port);
+  			loop(Port, Framebuffer);
 
 		% tell the port to close
 		stop ->
@@ -78,11 +97,8 @@ loop(Port) ->
 			exit(port_terminated)
 	end.
 
-encode({set_pixel, X, Y, RGB}) -> [1, X, Y, <<RGB:24>>];
-encode({fill, RGB})            -> [2, <<RGB:24>>];
-encode({fill_fb, Data})        -> [3, list_to_binary([<<X:24>> || X <- Data])];
-encode({get_gamma})            -> [4];
-encode({set_gamma, Value})     -> [5, Value].
+encode({get_gamma})            -> [2];
+encode({set_gamma, Value})     -> [3, Value].
 
 %%%
 %%% API
@@ -98,10 +114,16 @@ set_gamma_low_light() ->
 	set_gamma(<<0,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,3,3,3,4,4,5,5,6,6,7,7,8,8,9,10,10>>).
 
 set_pixel(X, Y, RGB) ->
-	call_port({set_pixel, X, Y, RGB}).
+	sensehat ! {set_pixel, X, Y, RGB},
+	ok.
 
 fill(RGB) ->
-	call_port({fill, RGB}).
+	sensehat ! {fill, RGB},
+	ok.
+
+fill_fb(Data) ->
+	sensehat ! {fill_fb, Data},
+	ok.
 
 clear() ->
 	fill(16#000000).
@@ -116,5 +138,3 @@ logo() -> fill_fb(
 	 16#f8e6eb, 16#ffffff, 16#fbeff2, 16#c43658, 16#b31d2a, 16#e6a6b8, 16#ffffff, 16#d56886,
      16#f8e6ea, 16#ffffff, 16#ffffff, 16#ffffff, 16#fffdff, 16#ffffff, 16#fefbfc, 16#f0c9d4]).
 
-fill_fb(Data) ->
-	call_port({fill_fb, Data}).

@@ -30,11 +30,9 @@
 #define SENSE_HAT_FB_FBIOSET_GAMMA 61697
 #define SENSE_HAT_FB_FBIORESET_GAMMA 61698
 
-#define SENSE_HAT_OP_SET_PIXEL 1
-#define SENSE_HAT_OP_FILL 2
-#define SENSE_HAT_OP_FILL_FB 3
-#define SENSE_HAT_OP_GET_GAMMA 4
-#define SENSE_HAT_OP_SET_GAMMA 5
+#define SENSE_HAT_OP_FILL_FB 1
+#define SENSE_HAT_OP_GET_GAMMA 2
+#define SENSE_HAT_OP_SET_GAMMA 3
 
 // framebuffer
 struct fb_t {
@@ -154,16 +152,6 @@ static uint16_t rgb_to_bits16(int r, int g, int b) {
     return (r << 11) + (g << 5) + b;
 }
 
-static int sensehat_drv_set_pixel(sensehat_data* d, int x, int y, int r, int g, int b){
-    d->fb->pixel[x][y] = rgb_to_bits16(r, g, b);
-    return 0;
-}
-
-static int sensehat_drv_fill(sensehat_data* d, int r, int g, int b) {
-    memset(d->fb, rgb_to_bits16(r, g, b), 128);
-    return 0;
-}
-
 static int sensehat_drv_fill_fb(sensehat_data* d, int len, char* buff) {
 
     // assert: len % 3 == 0
@@ -173,7 +161,7 @@ static int sensehat_drv_fill_fb(sensehat_data* d, int len, char* buff) {
     int pairs = len / 3;
 
     // assert: pairs >= 0 && pairs <= 8*8
-#ifdef SENSEHAT_DEBUG
+#ifdef SENSEHAT_DEBUG_BUFFER
     printf("drv: fill_fb len=%i pairs=%i rem=%i\r\n", len, pairs, len % 3);
 #endif
 
@@ -181,7 +169,7 @@ static int sensehat_drv_fill_fb(sensehat_data* d, int len, char* buff) {
         x = i / 8;
         y = i % 8;
 
-#ifdef SENSEHAT_DEBUG
+#ifdef SENSEHAT_DEBUG_BUFFER
         printf("x=%i y=%i r=%02x, g=%02x b=%02x\r\n", x, y, buff[0], buff[1], buff[2]);
 #endif
 
@@ -213,7 +201,7 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
     sensehat_data* d = (sensehat_data*)handle;
     char fn = buff[0];
 
-#ifdef SENSEHAT_DEBUG
+#ifdef SENSEHAT_DEBUG_BUFFER
     int i;
 
     printf("sensehat_drv: output bufflen=%i\r\n", bufflen);
@@ -225,24 +213,7 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
     printf("\r\n");
 #endif
 
-    
-    if (fn == SENSE_HAT_OP_SET_PIXEL && bufflen == 6) {
-      sensehat_drv_set_pixel(
-        d,
-        buff[1], // x
-        buff[2], // y
-        buff[3], // r
-        buff[4], // g
-        buff[5]); // b
-    }
-    else if (fn == SENSE_HAT_OP_FILL && bufflen == 4) {
-        sensehat_drv_fill(
-            d,
-            buff[1],
-            buff[2],
-            buff[3]);
-    }
-    else if (fn == SENSE_HAT_OP_FILL_FB && bufflen > 1) {
+    if (fn == SENSE_HAT_OP_FILL_FB && bufflen > 1) {
         sensehat_drv_fill_fb(
             d,
             bufflen - 1, // size of rgb pairs
