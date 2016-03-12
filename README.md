@@ -61,3 +61,10 @@ sensehat:stop().
 * Driver input validation
 * Design font for writing text to the display
 * Joystick integration
+
+## Reference
+
+* [Port driver example (erl and c)](http://erlang.org/doc/tutorial/c_portdriver.html)
+* [open_port/2 (erl)](http://erlang.org/doc/man/erlang.html#open_port-2)
+* [Port driver (erl)](http://erlang.org/doc/reference_manual/ports.html)
+* [erl_driver C API](http://erlang.org/doc/man/erl_driver.html)
