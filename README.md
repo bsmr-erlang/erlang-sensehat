@@ -34,6 +34,10 @@ This code is not production ready. That is, ready for *Astro Pi* on the Internat
 
 This code will only run on a Raspberry Pi with a Sense Hat attached (!)
 
+### Install Erlang OTP 18
+
+Follow the instructions here http://elinux.org/Erlang
+
 ### Build
 
 Compile the driver and erlang code
@@ -66,7 +70,6 @@ stop
 
 ## TODO
 
-* Driver input validation
 * Design font for writing text to the display
 * Joystick integration
 
