@@ -1,5 +1,5 @@
 sensehat_drv : sensehat_drv.c
-	gcc -o sensehat_drv.so -fpic -shared sensehat_drv.c
+	cc -o sensehat_drv.so -fpic -shared -Wall -Wextra -Wformat sensehat_drv.c
 
 sensehat: sensehat.erl
 	erl -compile sensehat.erl

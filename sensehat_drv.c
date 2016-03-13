@@ -1,5 +1,7 @@
-//  Erlang portdriver for Raspberry Pi Sense Hat
-//  morten.teinum@gmail.com
+/*
+  Erlang portdriver for Raspberry Pi Sense Hat
+  morten.teinum@gmail.com
+*/
 
 #define _GNU_SOURCE
 #define DEV_FB "/dev"
@@ -19,10 +21,13 @@
 #include <dirent.h>
 #include <string.h>
 
+/* close */
+#include <unistd.h>
+
 #include <linux/input.h>
 #include <linux/fb.h>
 
-// https://github.com/erlang/otp/blob/7cb403e4aa044fd2cc7702dbe8e2d0eea68e81f3/erts/emulator/beam/erl_driver.h
+/* https://github.com/erlang/otp/blob/7cb403e4aa044fd2cc7702dbe8e2d0eea68e81f3/erts/emulator/beam/erl_driver.h */
 #include "erl_driver.h"
 
 
@@ -35,12 +40,11 @@
 #define SENSE_HAT_OP_SET_GAMMA 3
 #define SENSE_HAT_OP_RESET_GAMMA 4
 
-// framebuffer
+
+/* framebuffer */
 struct fb_t {
     uint16_t pixel[8][8];
 };
-
-// struct fb_t *fb;
 
 typedef struct {
     ErlDrvPort port;
@@ -48,8 +52,6 @@ typedef struct {
     struct fb_t *fb;
 } sensehat_data;
 
-
-// start with fb
 
 static int is_framebuffer_device(const struct dirent *dir)
 {
@@ -71,10 +73,8 @@ static int open_fbdev()
     for (i = 0; i < ndev; i++)
     {
         char fname[64];
-        char name[256];
 
-        snprintf(fname, sizeof(fname),
-             "%s/%s", DEV_FB, namelist[i]->d_name);
+        snprintf(fname, sizeof(fname), "%s/%s", DEV_FB, namelist[i]->d_name);
         fd = open(fname, O_RDWR);
 
         if (fd < 0)
@@ -95,12 +95,16 @@ static int open_fbdev()
     return fd;
 }
 
-static ErlDrvData sensehat_drv_start(ErlDrvPort port, char *buff)
+static ErlDrvData sensehat_drv_start(ErlDrvPort port, __attribute__((unused)) char *buff)
 {
-//    printf ("sensehat_drv: start buff=%s\n", buff);
+    sensehat_data* d;
+
+    /* This function sets flags for how the control driver entry function will return data
+       to the port owner process. (The control function is called from port_control/3 in erlang.) */
+
     set_port_control_flags(port, PORT_CONTROL_FLAG_BINARY); 
 
-    sensehat_data* d = (sensehat_data*)driver_alloc(sizeof(sensehat_data));
+    d = (sensehat_data*)driver_alloc(sizeof(sensehat_data));
     d->port = port;
     d->fb = 0;
     d->fbfd = open_fbdev();
@@ -122,6 +126,13 @@ static ErlDrvData sensehat_drv_start(ErlDrvPort port, char *buff)
     return (ErlDrvData)d;
 
     error:
+        /* we failed to open the device or map it into the process (mmap) */
+        if (d->fbfd) {
+            close(d->fbfd);
+        }
+
+        driver_free(d);
+
         return (ErlDrvData)-1;
 }
 
@@ -153,22 +164,13 @@ static uint16_t rgb_to_bits16(int r, int g, int b) {
     return (r << 11) + (g << 5) + b;
 }
 
-static int sensehat_drv_fill_fb(sensehat_data* d, int len, char* buff) {
+static int sensehat_drv_fill_fb(sensehat_data* d, char* buff) {
 
-    // assert: len % 3 == 0
+    int led, x, y;
 
-    uint16_t rgb;
-    int i, x, y, r, g, b;
-    int pairs = len / 3;
-
-    // assert: pairs >= 0 && pairs <= 8*8
-#ifdef SENSEHAT_DEBUG_BUFFER
-    printf("drv: fill_fb len=%i pairs=%i rem=%i\r\n", len, pairs, len % 3);
-#endif
-
-    for (i=0; i < pairs; i++, buff += 3) {
-        x = i / 8;
-        y = i % 8;
+    for (led=0; led < 64; led++, buff += 3) {
+        x = led / 8;
+        y = led % 8;
 
 #ifdef SENSEHAT_DEBUG_BUFFER
         printf("x=%i y=%i r=%02x, g=%02x b=%02x\r\n", x, y, buff[0], buff[1], buff[2]);
@@ -190,7 +192,6 @@ static void sensehat_drv_get_gamma(sensehat_data* d) {
     ioctl(d->fbfd, SENSE_HAT_FB_FBIOGET_GAMMA, &gamma);
 
     driver_output(d->port, gamma, sizeof(gamma));
-
 }
 
 static void sensehat_drv_set_gamma(sensehat_data* d, char* buff) {
@@ -218,20 +219,16 @@ static void sensehat_drv_output(ErlDrvData handle, char *buff, ErlDrvSizeT buffl
     printf("\r\n");
 #endif
 
-    if (fn == SENSE_HAT_OP_FILL_FB && bufflen > 1) {
-        sensehat_drv_fill_fb(
-            d,
-            bufflen - 1, // size of rgb pairs
-            buff + 1);
+    if (fn == SENSE_HAT_OP_FILL_FB && bufflen == (1 + 8 * 8 * 3)) {
+        sensehat_drv_fill_fb(d, buff + 1);
     }
     else if (fn == SENSE_HAT_OP_GET_GAMMA) {
         sensehat_drv_get_gamma(d);
     }
-    else if (fn == SENSE_HAT_OP_SET_GAMMA && bufflen == 33) {
-        // assert bufflen == 33
+    else if (fn == SENSE_HAT_OP_SET_GAMMA && bufflen == (1 + 32)) {
         sensehat_drv_set_gamma(d, buff + 1);
     }
-    else if (fn == SENSE_HAT_OP_RESET_GAMMA && bufflen == 2) {
+    else if (fn == SENSE_HAT_OP_RESET_GAMMA && bufflen == (1 + 1)) {
         sensehat_drv_reset_gamma(d, buff[1]);
     }
     else {

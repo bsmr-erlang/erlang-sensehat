@@ -36,9 +36,6 @@ init() ->
 	% open and start the driver (ErlDrvEntry.start)
 	Port = open_port({spawn_driver, sensehat_drv}, [binary, use_stdio]),
 
-	% dump some info about the port
-	% io:format("erlang:port_info: ~p ~n", [erlang:port_info(Port)]),
-	
 	% start waiting for messages from the port
 	loop(Port, create_framebuffer(0)).
 
