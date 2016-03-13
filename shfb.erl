@@ -2,7 +2,7 @@
 %% morten.teinum@gmail.com
 
 -module(shfb).
--export([create/1, set_pixel/4, to_binary/1]).
+-export([create/1, set_pixel/4, to_binary/1, set_data/2]).
 
 %% setnth from http://stackoverflow.com/a/4781219/1167976
 setnth(1, [_|Rest], New) -> [New|Rest];
@@ -26,3 +26,6 @@ set_pixel(X, Y, Color, FB) ->
 
 to_binary(FB) ->
 	list_to_binary([<<RGB:24>> || RGB <- lists:flatten(FB)]).
+
+set_data(List, _) ->
+	List.

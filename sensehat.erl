@@ -61,7 +61,7 @@ loop(Port, Framebuffer) ->
 			loop(Port, shfb:create(RGB));
 
 		{fill_fb, Data} ->
-			loop(Port, Data);
+			loop(Port, shfb:set_data(Data, Framebuffer));
 
 		{call, Msg} ->
 			% Sends Data to the port.
