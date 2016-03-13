@@ -4,7 +4,7 @@
 -module(shexample).
 -export([logo/0]).
 
-logo() -> sensehat:fill_fb(
+logo() -> sensehat:set_pixels(
 	[[16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff],
 	 [16#fcf2f5, 16#ffffff, 16#fdf9fa, 16#eabec4, 16#f9e9ee, 16#ffffff, 16#fbeff2, 16#e9b1c1],
 	 [16#fdf7f9, 16#ffffff, 16#e192a7, 16#a70712, 16#da7a94, 16#ffffff, 16#fdf7f8, 16#cc4b6e],

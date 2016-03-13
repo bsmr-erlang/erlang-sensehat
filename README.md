@@ -51,9 +51,17 @@ erl
 Start the port driver, this will find the framebuffer device and map the device into memory. Logo will write a pixelated Erlang logo to the device and stop will close the connection with the Sense Hat.
 
 ```
-sensehat:start().
-sensehat:logo().
-sensehat:stop().
+Eshell V6.2  (abort with ^G)
+1> sensehat:start().      
+<0.35.0>
+2> shexample:logo().
+ok
+3> sensehat:set_rotation(180).
+ok
+4> sensehat:stop().
+sensehat_drv: stop
+stop
+
 ```
 
 ## TODO

@@ -5,9 +5,9 @@
 
 -export([start/0, stop/0, init/0]).
 -export([set_pixel/3,
+	     set_pixels/1,
 	     clear/0,
-	     fill/1,
-	     fill_fb/1,
+	     clear/1,
 	     get_gamma/0,
 	     set_gamma/1,
 	     set_gamma_low_light/0,
@@ -47,11 +47,11 @@ loop(Port, FB) ->
 		{set_pixel, X, Y, RGB} ->
 			loop(Port, shfb:set_pixel(X, Y, RGB, FB));
 
-		{fill, RGB} ->
+		{set_pixels, Pixels} ->
+			loop(Port, shfb:set_pixels(Pixels, FB));
+		
+		{clear, RGB} ->
 			loop(Port, shfb:create(RGB));
-
-		{fill_fb, Data} ->
-			loop(Port, shfb:set_data(Data, FB));
 
 		{set_rotation, N} ->
 			loop(Port, shfb:set_rotation(N, FB));
@@ -121,19 +121,17 @@ set_pixel(X, Y, RGB) when X >= 0, X =< 7, Y >= 0, Y =< 7 ->
 	sensehat ! {set_pixel, X, Y, RGB},
 	ok.
 
+set_pixels(Pixels) when length(Pixels) =:= 8 ->
+	sensehat ! {set_pixels, Pixels},
+	ok.
+
 set_rotation(N) when N =:= 0; N =:= 90; N =:= 180; N =:= 270 ->
 	sensehat ! {set_rotation, N},
 	ok.
 
-fill(RGB) ->
-	sensehat ! {fill, RGB},
-	ok.
-
-fill_fb(Data) when length(Data) =:= 8 ->
-	sensehat ! {fill_fb, Data},
+clear(RGB) ->
+	sensehat ! {clear, RGB},
 	ok.
 
 clear() ->
-	fill(16#000000).
-
-
+	clear(16#000000).
