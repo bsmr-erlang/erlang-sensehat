@@ -23,9 +23,6 @@ start() ->
 	% Returns the process identifier of a new process started.
 	spawn(?MODULE, init, []).
 
-create_framebuffer(Default) ->
-	array:new([{size,64}, {default,Default}, {fixed,true}]).
-
 init() ->
 	% register this process with the atom sensehat
 	% self() will be the port owner
@@ -37,7 +34,7 @@ init() ->
 	Port = open_port({spawn_driver, sensehat_drv}, [binary, use_stdio]),
 
 	% start waiting for messages from the port
-	loop(Port, create_framebuffer(0)).
+	loop(Port, shfb:create(0)).
 
 call_port(Msg) ->
 	sensehat ! {call, Msg},
@@ -53,24 +50,19 @@ get_port(Msg) ->
 stop() ->
 	sensehat ! stop.
 
-coordinate_to_index(X,  Y) -> X * 8 + Y.
-
 loop(Port, Framebuffer) ->
-	% create a binary representation of the framebuffer that we will send to the port
-	BinaryFramebuffer = list_to_binary([<<X:24>> || X <- array:to_list(Framebuffer)]),
-
-	Port ! { self(), {command, [1, BinaryFramebuffer]}},
+	Port ! { self(), {command, [1, shfb:to_binary(Framebuffer)]}},
 
 	% wait for work to do
 	receive
 		{set_pixel, X, Y, RGB} ->
-			loop(Port, array:set(coordinate_to_index(X, Y), RGB, Framebuffer));
+			loop(Port, shfb:set_pixel(X, Y, RGB, Framebuffer));
 
 		{fill, RGB} ->
-			loop(Port, create_framebuffer(RGB));
+			loop(Port, shfb:create(RGB));
 
 		{fill_fb, Data} ->
-			loop(Port, array:fix(array:from_list(Data)));
+			loop(Port, Data);
 
 		{call, Msg} ->
 			% Sends Data to the port.
@@ -130,7 +122,7 @@ fill(RGB) ->
 	sensehat ! {fill, RGB},
 	ok.
 
-fill_fb(Data) when length(Data) =:= 64 ->
+fill_fb(Data) when length(Data) =:= 8 ->
 	sensehat ! {fill_fb, Data},
 	ok.
 
@@ -138,12 +130,12 @@ clear() ->
 	fill(16#000000).
 
 logo() -> fill_fb(
-	[16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff,
-	 16#fcf2f5, 16#ffffff, 16#fdf9fa, 16#eabec4, 16#f9e9ee, 16#ffffff, 16#fbeff2, 16#e9b1c1,
-	 16#fdf7f9, 16#ffffff, 16#e192a7, 16#a70712, 16#da7a94, 16#ffffff, 16#fdf7f8, 16#cc4b6e,
-	 16#ffffff, 16#ffffff, 16#fef9fa, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#e39eb1,
-	 16#ffffff, 16#ffffff, 16#da7d97, 16#ca5b69, 16#d1577d, 16#c94268, 16#bc2342, 16#c93f65,
-	 16#ffffff, 16#ffffff, 16#cc4a6e, 16#930000, 16#9e0000, 16#a60005, 16#bc2444, 16#c73b61,
-	 16#f8e6eb, 16#ffffff, 16#fbeff2, 16#c43658, 16#b31d2a, 16#e6a6b8, 16#ffffff, 16#d56886,
-     16#f8e6ea, 16#ffffff, 16#ffffff, 16#ffffff, 16#fffdff, 16#ffffff, 16#fefbfc, 16#f0c9d4]).
+	[[16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff],
+	 [16#fcf2f5, 16#ffffff, 16#fdf9fa, 16#eabec4, 16#f9e9ee, 16#ffffff, 16#fbeff2, 16#e9b1c1],
+	 [16#fdf7f9, 16#ffffff, 16#e192a7, 16#a70712, 16#da7a94, 16#ffffff, 16#fdf7f8, 16#cc4b6e],
+	 [16#ffffff, 16#ffffff, 16#fef9fa, 16#ffffff, 16#ffffff, 16#ffffff, 16#ffffff, 16#e39eb1],
+	 [16#ffffff, 16#ffffff, 16#da7d97, 16#ca5b69, 16#d1577d, 16#c94268, 16#bc2342, 16#c93f65],
+	 [16#ffffff, 16#ffffff, 16#cc4a6e, 16#930000, 16#9e0000, 16#a60005, 16#bc2444, 16#c73b61],
+	 [16#f8e6eb, 16#ffffff, 16#fbeff2, 16#c43658, 16#b31d2a, 16#e6a6b8, 16#ffffff, 16#d56886],
+     [16#f8e6ea, 16#ffffff, 16#ffffff, 16#ffffff, 16#fffdff, 16#ffffff, 16#fefbfc, 16#f0c9d4]]).
 
