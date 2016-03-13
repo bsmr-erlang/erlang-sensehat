@@ -39,7 +39,10 @@ get_render_buffer(#framebuffer{data=Data, rotation=90}) ->
 	rotate90(Data);
 
 get_render_buffer(#framebuffer{data=Data, rotation=180}) ->
-	rotate90(rotate90(Data)).
+	rotate90(rotate90(Data));
+
+get_render_buffer(#framebuffer{data=Data, rotation=270}) ->
+	transpose(Data).
 
 to_binary(FB) ->
 	list_to_binary([<<RGB:24>> || RGB <- lists:flatten(get_render_buffer(FB))]).

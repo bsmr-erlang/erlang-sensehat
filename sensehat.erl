@@ -121,7 +121,7 @@ set_pixel(X, Y, RGB) when X >= 0, X =< 7, Y >= 0, Y =< 7 ->
 	sensehat ! {set_pixel, X, Y, RGB},
 	ok.
 
-set_rotation(N) when N =:= 0; N =:= 90; N =:= 180 ->
+set_rotation(N) when N =:= 0; N =:= 90; N =:= 180; N =:= 270 ->
 	sensehat ! {set_rotation, N},
 	ok.
 
