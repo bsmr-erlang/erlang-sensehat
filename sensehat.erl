@@ -23,6 +23,9 @@ start() ->
 	% Returns the process identifier of a new process started.
 	spawn(?MODULE, init, []).
 
+stop() ->
+	sensehat ! stop.
+
 init() ->
 	% register this process with the atom sensehat
 	% self() will be the port owner
@@ -36,43 +39,29 @@ init() ->
 	% start waiting for messages from the port
 	loop(Port, shfb:create(0)).
 
-call_port(Msg) ->
-	sensehat ! {call, Msg},
-	ok.
-
-get_port(Msg) ->
-  	sensehat ! {get, self(), Msg},
- 	receive
- 		{sensehat, Result} ->
- 			Result
- 	end.	
-
-stop() ->
-	sensehat ! stop.
-
-loop(Port, Framebuffer) ->
-	Port ! { self(), {command, [1, shfb:to_binary(Framebuffer)]}},
+loop(Port, FB) ->
+	Port ! { self(), {command, [1, shfb:to_binary(FB)]}},
 
 	% wait for work to do
 	receive
 		{set_pixel, X, Y, RGB} ->
-			loop(Port, shfb:set_pixel(X, Y, RGB, Framebuffer));
+			loop(Port, shfb:set_pixel(X, Y, RGB, FB));
 
 		{fill, RGB} ->
 			loop(Port, shfb:create(RGB));
 
 		{fill_fb, Data} ->
-			loop(Port, shfb:set_data(Data, Framebuffer));
+			loop(Port, shfb:set_data(Data, FB));
 
 		{set_rotation, N} ->
-			loop(Port, shfb:set_rotation(N, Framebuffer));
+			loop(Port, shfb:set_rotation(N, FB));
 
 		{call, Msg} ->
 			% Sends Data to the port.
 			% alternative: port_command(Port, Msg)
 			Port ! {self(), {command, encode(Msg)}},
 			% our call is fire and forget, wait for next message
-			loop(Port, Framebuffer);
+			loop(Port, FB);
 
 		{get, Caller, Msg} ->
 			Port ! {self(), {command, encode(Msg)}},
@@ -80,7 +69,7 @@ loop(Port, Framebuffer) ->
   				{Port, {data, Data}} ->
  					Caller ! {sensehat, Data}
   			end,
-  			loop(Port, Framebuffer);
+  			loop(Port, FB);
 
 		% tell the port to close
 		stop ->
@@ -100,6 +89,17 @@ encode({get_gamma})                  -> [2];
 encode({set_gamma, Value})           -> [3, Value];
 encode({reset_gamma, gamma_default}) -> [4, 0];
 encode({reset_gamma, gamma_low})     -> [4, 1].
+
+call_port(Msg) ->
+	sensehat ! {call, Msg},
+	ok.
+
+get_port(Msg) ->
+  	sensehat ! {get, self(), Msg},
+ 	receive
+ 		{sensehat, Result} ->
+ 			Result
+ 	end.	
 
 %%%
 %%% API
