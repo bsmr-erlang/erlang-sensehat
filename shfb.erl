@@ -4,6 +4,7 @@
 -module(shfb).
 -export([create/1, set_pixel/4, to_binary/1]).
 
+%% setnth from http://stackoverflow.com/a/4781219/1167976
 setnth(1, [_|Rest], New) -> [New|Rest];
 setnth(I, [E|Rest], New) -> [E|setnth(I-1, Rest, New)].
 
