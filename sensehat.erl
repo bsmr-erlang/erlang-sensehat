@@ -11,7 +11,8 @@
 	     get_gamma/0,
 	     set_gamma/1,
 	     set_gamma_low_light/0,
-	     reset_gamma/1]).
+	     reset_gamma/1,
+	     set_rotation/1]).
 
 start() ->
 	case erl_ddll:load_driver(".", sensehat_drv) of
@@ -62,6 +63,9 @@ loop(Port, Framebuffer) ->
 
 		{fill_fb, Data} ->
 			loop(Port, shfb:set_data(Data, Framebuffer));
+
+		{set_rotation, N} ->
+			loop(Port, shfb:set_rotation(N, Framebuffer));
 
 		{call, Msg} ->
 			% Sends Data to the port.
@@ -115,6 +119,10 @@ set_gamma_low_light() ->
 
 set_pixel(X, Y, RGB) when X >= 0, X =< 7, Y >= 0, Y =< 7 ->
 	sensehat ! {set_pixel, X, Y, RGB},
+	ok.
+
+set_rotation(N) when N =:= 0; N =:= 90; N =:= 180 ->
+	sensehat ! {set_rotation, N},
 	ok.
 
 fill(RGB) ->
