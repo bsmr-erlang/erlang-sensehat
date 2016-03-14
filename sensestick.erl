@@ -16,11 +16,7 @@ start() ->
 init() ->
 	register(sensestick, self()),
 
-	io:format("open port ~n", []),
-
 	Port = open_port({spawn_driver, sensestick_drv}, [use_stdio]),
-
-	io:format("port opened ~p ~n", [Port]),
 
 	% send control message to open it
 	port_control(Port, 1, []),

@@ -19,6 +19,13 @@
 #include <linux/fb.h>
 #include <unistd.h>
 
+#define SS_COMMAND_START 1
+#define SS_EVENT_UP 1
+#define SS_EVENT_DOWN 2
+#define SS_EVENT_LEFT 3
+#define SS_EVENT_RIGHT 4
+#define SS_EVENT_ENTER 5
+
 static ErlDrvData start(ErlDrvPort port, char *command);
 static void stop(ErlDrvData drv_data);
 static int control(ErlDrvData drv_data, unsigned int command,
@@ -81,8 +88,6 @@ static int open_evdev()
 
 		fd = open(fname, O_RDONLY);
 
-		printf("fname: %s %i\r\n", fname, fd);
-
 		if (fd < 0)
 			continue;
 
@@ -92,6 +97,7 @@ static int open_evdev()
 			break;
 
 		close(fd);
+		fd = -1;
 	}
 
 	for (i = 0; i < ndev; i++)
@@ -105,9 +111,6 @@ static int open_evdev()
 typedef struct sensestick_data {
     ErlDrvPort port;
     int fd;
-    /* prev state so we can pick up changes to the joystick */
-    __u16 code;
-    __u32 eid;
 } sensestick_data_t;
 
 DRIVER_INIT(pq_drv)
@@ -119,8 +122,6 @@ static ErlDrvData start(ErlDrvPort port, __attribute__((unused)) char *command) 
     sensestick_data_t* data = driver_alloc(sizeof(sensestick_data_t));
     data->port = port;
     data->fd = 0;
-    data->code = 0;
-    data->eid=0;
     return (ErlDrvData)data;}
 
 static void stop(ErlDrvData drv_data) {
@@ -146,64 +147,51 @@ static int control(
 	__attribute__((unused)) char **rbuf,
 	__attribute__((unused)) ErlDrvSizeT rlen) {
 
-	printf("drv:control command=%i\r\n", command);
-
 	sensestick_data_t* d = (sensestick_data_t *) drv_data;
 	int ret;
 
-	if (command == 1) {
+	if (command == SS_COMMAND_START) {
 		// open device
 		d->fd = open_evdev();
 
-		if (!d->fd) {
-			printf("drv:control failed to open_edev\r\n");
-			// bummer; report error and close this port driver
-			driver_failure_atom(d->port, "sensestick_no_dev");
-		}
-		else {
-			ret = driver_select(d->port, (ErlDrvEvent)d->fd, ERL_DRV_READ, 1);
-
-			printf("drv:control event fd=%i select=%i\r\n", d->fd, ret);
-		}
+		ret = driver_select(d->port, (ErlDrvEvent)d->fd, ERL_DRV_READ, 1);
 	}
 	else {
 		return -1;
 	}
 
-	return 0;
+	return ret;
 }
 
 static void change_state(sensestick_data_t* d, int code) {
-	if (d->code == code)
-		return;
+
+	char result = 0;
 
 	// send driver output (as atom? up down, left right, enter)
 	switch (code) {
 		case KEY_ENTER:
-			driver_output(d->port, "enter", 5);
+			result = SS_EVENT_ENTER;
 			break;
 		case KEY_UP:
-			driver_output(d->port, "up", 2);
+			result = SS_EVENT_UP;
 			break;
 		case KEY_RIGHT:
-			driver_output(d->port, "right", 5);
+			result = SS_EVENT_RIGHT;
 			break;
 		case KEY_DOWN:
-			driver_output(d->port, "down", 4);
+			result = SS_EVENT_DOWN;
 			break;
 		case KEY_LEFT:
-			driver_output(d->port, "left", 4);
+			result = SS_EVENT_LEFT;
 			break;
 	}
 
-	d->code = code;
+	if (result)
+		driver_output(d->port, &result, sizeof(result));
 }
 
 static void ready_input(ErlDrvData drv_data, __attribute__((unused)) ErlDrvEvent event) {
 	
-	// printf("drv:ready_input\r\n");
-
-	/* data on the joystick input! */
 	sensestick_data_t* d = (sensestick_data_t *) drv_data;
 
 	struct input_event ev[64];
@@ -211,8 +199,6 @@ static void ready_input(ErlDrvData drv_data, __attribute__((unused)) ErlDrvEvent
 	int r;
 
 	r = read(d->fd, ev, sizeof(struct input_event) * 64);
-
-	// printf("drv:input read=%i struct=%i\r\n", r, sizeof(struct input_event));
 
 	if (r <= 0) {
 		fprintf(stderr, "expected %d bytes, got %d\r\n", (int) sizeof(struct input_event), r);
@@ -229,9 +215,6 @@ static void ready_input(ErlDrvData drv_data, __attribute__((unused)) ErlDrvEvent
 
 		if (ev[i].value != 1)
 			continue;
-
-		// d->eid++;
-		// printf("drv:ready_input %08x ev[%i].type=%i value=%i code=%i\r\n", d->eid, i, ev[i].type, ev[i].value, ev[i].code);
 
 		change_state(d, ev->code);
 	}

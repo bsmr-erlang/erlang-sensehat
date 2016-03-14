@@ -47,15 +47,14 @@ get_render_buffer(#framebuffer{pixels=Pixels, rotation=180}) ->
 get_render_buffer(#framebuffer{pixels=Pixels, rotation=270}) ->
 	transpose(Pixels).
 
-to_binary(FB) ->
-	list_to_binary([<<RGB:24>> || RGB <- lists:flatten(get_render_buffer(FB))]).
-
-
 rotate90(Pixels) ->
 	reverse_rows(transpose(Pixels)).
 
 reverse_rows(Pixels) ->
 	lists:map(fun(E) -> lists:reverse(E) end, Pixels).
+
+to_binary(FB) ->
+	list_to_binary([<<RGB:24>> || RGB <- lists:flatten(get_render_buffer(FB))]).
 
 % from haskell http://stackoverflow.com/a/5412598/1167976
 transpose([[X | Xs] | Xss]) ->
