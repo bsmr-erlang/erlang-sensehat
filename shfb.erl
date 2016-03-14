@@ -1,7 +1,7 @@
 %% framebuffer module for Raspberry Pi Sense Hat
-%% morten.teinum@gmail.com
 
 -module(shfb).
+-author("Morten Teinum <morten.teinum@gmail.com>").
 -export([create/1, set_pixel/4, set_pixels/2, to_binary/1, set_rotation/2]).
 
 -record(framebuffer, {rotation, pixels}).

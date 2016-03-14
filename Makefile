@@ -7,7 +7,7 @@ sensestick_drv: sensestick_drv.c
 sensehat: sensehat.erl shfb.erl
 	erlc *.erl
 
-all: sensehat sensehat_drv
+all: sensehat sensehat_drv sensestick_drv
 
 clean:
 	rm -f *.so *.beam

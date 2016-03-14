@@ -148,19 +148,15 @@ static int control(
 	__attribute__((unused)) ErlDrvSizeT rlen) {
 
 	sensestick_data_t* d = (sensestick_data_t *) drv_data;
-	int ret;
 
 	if (command == SS_COMMAND_START) {
 		// open device
 		d->fd = open_evdev();
 
-		ret = driver_select(d->port, (ErlDrvEvent)d->fd, ERL_DRV_READ, 1);
-	}
-	else {
-		return -1;
+		driver_select(d->port, (ErlDrvEvent)d->fd, ERL_DRV_READ, 1);
 	}
 
-	return ret;
+	return 0;
 }
 
 static void change_state(sensestick_data_t* d, int code) {

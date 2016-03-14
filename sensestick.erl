@@ -1,6 +1,7 @@
 -module(sensestick).
+-author("Morten Teinum <morten.teinum@gmail.com>").
 -export([start/0, stop/0, init/0]).
-
+-export([subscribe/0]).
 
 start() ->
 	io:format("loading driver ~n", []),
@@ -21,14 +22,18 @@ init() ->
 	% send control message to open it
 	port_control(Port, 1, []),
 
-	loop(Port)
+	loop(Port, pubsub:init())
 .
 
-loop(Port) ->
+loop(Port, PS) ->
+	% io:format("loop: ~p ~p ~n", [Port, PS]),
 	receive
 		{Port, {data, Data}} ->
-			io:format("event! ~p ~n", [Data]),
-			loop(Port);
+			pubsub:publish({sensestick, decode(Data)}, PS),
+			loop(Port, PS);
+
+		{subscribe, Pid} ->
+			loop(Port, pubsub:subscribe(Pid, PS));
 
 		% tell the port to close
 		stop ->
@@ -47,3 +52,16 @@ loop(Port) ->
 
 stop() ->
 	sensestick ! stop.
+
+decode([1]) -> up;
+decode([2]) -> down;
+decode([3]) -> left;
+decode([4]) -> right;
+decode([5]) -> enter.
+
+% client api
+subscribe() ->
+	sensestick ! {subscribe, self()}.
+
+
+

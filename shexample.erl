@@ -1,7 +1,7 @@
 %% Erlang Raspberry Pi Sense Hat Examples
-%% morten.teinum@gmail.com
 
 -module(shexample).
+-author("Morten Teinum <morten.teinum@gmail.com>").
 -export([logo/0]).
 
 logo() -> sensehat:set_pixels(
