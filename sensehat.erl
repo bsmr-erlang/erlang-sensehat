@@ -56,14 +56,14 @@ loop(Port, FB) ->
 		{set_rotation, N} ->
 			loop(Port, shfb:set_rotation(N, FB));
 
-		{call, Msg} ->
+		{cast, Msg} ->
 			% Sends Data to the port.
 			% alternative: port_command(Port, Msg)
 			Port ! {self(), {command, encode(Msg)}},
 			% our call is fire and forget, wait for next message
 			loop(Port, FB);
 
-		{get, Caller, Msg} ->
+		{call, Caller, Msg} ->
 			Port ! {self(), {command, encode(Msg)}},
 			receive
   				{Port, {data, Data}} ->
@@ -90,12 +90,12 @@ encode({set_gamma, Value})           -> [3, Value];
 encode({reset_gamma, gamma_default}) -> [4, 0];
 encode({reset_gamma, gamma_low})     -> [4, 1].
 
-call_port(Msg) ->
-	sensehat ! {call, Msg},
+cast(Msg) ->
+	sensehat ! {cast, Msg},
 	ok.
 
-get_port(Msg) ->
-  	sensehat ! {get, self(), Msg},
+call(Msg) ->
+  	sensehat ! {call, self(), Msg},
  	receive
  		{sensehat, Result} ->
  			Result
@@ -106,13 +106,13 @@ get_port(Msg) ->
 %%%
 
 reset_gamma(Type) ->
-	call_port({reset_gamma, Type}).
+	cast({reset_gamma, Type}).
 
 get_gamma() ->
-	get_port({get_gamma}).
+	call({get_gamma}).
 
 set_gamma(Value) ->
-	call_port({set_gamma, Value}).
+	cast({set_gamma, Value}).
 
 set_gamma_low_light() ->
 	set_gamma(<<0,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,3,3,3,4,4,5,5,6,6,7,7,8,8,9,10,10>>).
