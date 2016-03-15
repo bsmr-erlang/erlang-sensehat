@@ -14,7 +14,7 @@
 	terminate/2,
 	code_change/3]).
 
--record(state, {port, event_mgr_pid}).
+-record(state, {port, pid}).
 
 start_link() ->
 	case erl_ddll:load_driver(".", sensestick_drv) of
@@ -35,25 +35,18 @@ init(_Args) ->
 	% send control message to connect to the joystick
 	port_control(Port, 1, []),
 	% initial state for this server
-	{ok, #state{port=Port, event_mgr_pid=Pid}}.
+	{ok, #state{port=Port, pid=Pid}}.
 
 handle_call({subscribe, From}, _From, State) ->
 	HandlerId = {st_event, make_ref()},
-	gen_event:add_handler(State#state.event_mgr_pid, HandlerId, [From]),
-    {reply, HandlerId, State};
-
-%% handle_call fallback
-handle_call(_Request, _From, State) ->
-    {noreply, State}.
+	gen_event:add_handler(State#state.pid, HandlerId, [From]),
+    {reply, HandlerId, State}.
 
 handle_cast(shutdown, State) ->
-    {stop, normal, State};
+    {stop, normal, State}.
 
-handle_cast(_Request, State) ->
-    {noreply, State}.
-
-handle_info({_Port, {data, Data}}, State) ->
-	gen_event:notify(State#state.event_mgr_pid, decode(Data)),
+handle_info({_Port, {data, [Code]}}, State) ->
+	gen_event:notify(State#state.pid, code_to_event(Code)),
 	{noreply, State}.
 
 terminate(Reason, State) ->
@@ -62,11 +55,8 @@ terminate(Reason, State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-decode([1]) -> up;
-decode([2]) -> down;
-decode([3]) -> left;
-decode([4]) -> right;
-decode([5]) -> enter.
+code_to_event(Code) ->
+  	lists:nth(Code, [up,down,left,right,enter]).
 
 % client api
 subscribe() ->
